@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 namespace objLoader {
@@ -27,8 +28,8 @@ struct Vec3{
 };
 
 struct Face{
-  std::vector<int> v;
-  Face(std::vector<int> v) : v(v){}
+  unsigned int x,y,z;
+  Face(unsigned int x,unsigned int y,unsigned int z) : x(x), y(y), z(z){}
 };
 
 void parseString(std::vector<std::string>& tokens, const std::string& line, const std::string& delimiter){
@@ -65,9 +66,13 @@ bool loadModel(std::string path, std::vector<Vec4>& vertices, std::vector<Vec3>&
   uint64_t li = 0;
 
   while(std::getline(file, line)){
+    std::istringstream iss(line);
     std::vector<std::string> tokens;
-    parseString(tokens, line, " ");
-    
+    std::string token;
+
+    while(iss >> token)
+      tokens.push_back(token);
+
     if(tokens.empty()) 
       continue;
     
@@ -109,30 +114,38 @@ bool loadModel(std::string path, std::vector<Vec4>& vertices, std::vector<Vec3>&
         return false;
       }
 
-      std::vector<int> v; 
-      std::vector<int> vt;
-      std::vector<int> vn;
+      unsigned int v[3]; 
+      unsigned int vt[3]; 
+      unsigned int vn[3]; 
+      bool ve=false, vte=false, vne=false;
 
-      for(int i=1;i<tokens.size();i++){
+      for(int i=1;i<4;i++){
         std::vector<std::string> parts;
         parseString(parts, tokens[i], "/");
-        v.push_back(std::stoi(parts[0]));
+
+        v[i-1] = std::stoi(parts[0]);
         
-        if (parts.size() >= 1 && !parts[0].empty())
-            v.push_back(std::stoi(parts[0])); 
+        if (parts.size() >= 1 && !parts[0].empty()){
+          v[i-1] = std::stoi(parts[0]);
+          ve = true;
+        }
 
-        if (parts.size() >= 2 && !parts[1].empty())
-            vt.push_back(std::stoi(parts[1]));
+        if (parts.size() >= 2 && !parts[1].empty()){
+          vt[i-1] = std::stoi(parts[1]);
+          vte=true;
+        }
 
-        if (parts.size() >= 3 && !parts[2].empty())
-            vn.push_back(std::stoi(parts[2]));
+        if (parts.size() >= 3 && !parts[2].empty()){
+          vn[i-1] = std::stoi(parts[2]);
+          vne=true;
+        }
       }
-      if(!v.empty())
-        positions.push_back(Face(v));
-      if(!vt.empty())
-        texPositions.push_back(Face(vt));
-      if(!vn.empty())
-        normPositions.push_back(Face(vn));
+      if(ve)
+        positions.push_back(Face(v[0],v[1],v[2]));
+      if(vte)
+        texPositions.push_back(Face(vt[0],vt[1],vt[2]));
+      if(vne)
+        normPositions.push_back(Face(vn[0],vn[1],vn[2]));
     }
   }   
 
