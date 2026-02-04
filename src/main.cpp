@@ -3,20 +3,33 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <vector>
+#include "glm/detail/qualifier.hpp"
+#include "glm/ext/vector_float3.hpp"
 #include "objLoader.h"
 #include "shader.h"
+#include "camera.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 #define SCR_WIDTH 1920
 #define SCR_HEIGHT 1080
 
-GLFWwindow* window;
+Camera cam(glm::vec3(0.0f, 0.0f, -3.0f));
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool firstMouse = true;
 
-void init();
+float deltaTime = 0.0f;	
+float lastFrame = 0.0f;
+
+void init(GLFWwindow*& window);
 void terminate();
-void processInput();
+void processInput(GLFWwindow *window);
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 
 int main(){
-  init();
+  GLFWwindow* window;
+  init(window);
 
   std::string path = "f.obj";
 
@@ -59,11 +72,24 @@ int main(){
 
   //main loop
   while(!glfwWindowShouldClose(window)){
-    processInput();
+    float currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;   processInput(window);
+    
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     glUseProgram(shader.ID);
+  
+    glm::mat4 view = glm::mat4(1.0f); 
+    glm::mat4 projection = glm::mat4(1.0f);
+    projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+    view = cam.GetViewMatrix();
+
+    
+    glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, &projection[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(shader.ID, "view"), 1, GL_FALSE, &view[0][0]);
+    
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
@@ -76,7 +102,7 @@ int main(){
 }
 //Main end
 
-void init(){
+void init(GLFWwindow*& window){
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -87,6 +113,10 @@ void init(){
   glewInit();
 
   glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+  glfwSetCursorPosCallback(window, mouse_callback);
+
+  glEnable(GL_DEPTH_TEST);
 }
 
 void terminate(){
@@ -96,7 +126,39 @@ void terminate(){
   glfwTerminate();
 }
 
-void processInput(){
+void processInput(GLFWwindow* window){
   if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
+  
+  if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    cam.ProcessKeyboard(FORWARD, deltaTime);
+  if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    cam.ProcessKeyboard(BACKWARD, deltaTime);
+  if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    cam.ProcessKeyboard(LEFT, deltaTime);
+  if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    cam.ProcessKeyboard(RIGHT, deltaTime);
+  if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    cam.ProcessKeyboard(UP, deltaTime);
+  if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    cam.ProcessKeyboard(DOWN, deltaTime);
+}
+
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn){
+  float xpos = static_cast<float>(xposIn);
+  float ypos = static_cast<float>(yposIn);
+
+  if(firstMouse){
+    lastX = xpos;
+    lastY = ypos;
+    firstMouse = false;
+  }
+
+  float xoffset = xpos - lastX;
+  float yoffset = lastY - ypos;
+
+  lastX = xpos;
+  lastY = ypos;
+
+  cam.ProcessMouseMovement(xoffset, yoffset);
 }
