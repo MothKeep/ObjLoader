@@ -34,59 +34,85 @@ struct Face{
 };
 
 struct Mesh{
-  std::vector<float> vertices;
-  std::vector<float> texCoords;
-  std::vector<float> normals;
   std::vector<unsigned int> positions;
   std::vector<unsigned int> texPositions;
   std::vector<unsigned int> normPositions;
   std::string mtl;
 
-  Mesh(std::vector<Face> pos, std::vector<Face> texPos, std::vector<Face> normPos, 
-      std::vector<Vec3> Ver, std::vector<Vec3> TexCoords, std::vector<Vec3> Normals, std::string mtl) : mtl(mtl){
-    vertices.reserve(pos.size() * 3);
-    for(const Vec3& v : Ver) {
-      vertices.push_back(v.x);
-      vertices.push_back(v.y);
-      vertices.push_back(v.z);
-    }
-    normals.reserve(Normals.size() * 3);
-    for(const Vec3& v : Normals) {
-      normals.push_back(v.x);
-      normals.push_back(v.y);
-      normals.push_back(v.z);
-    }
-    texCoords.reserve(pos.size() * 3);
-    for(const Vec3& v : TexCoords) {
-      texCoords.push_back(v.x);
-      texCoords.push_back(v.y);
-      texCoords.push_back(v.z);
-    }
+  Mesh(std::vector<Face> pos, std::vector<Face> texPos, std::vector<Face> normPos, std::string mtl, unsigned int n,  unsigned int tn,  unsigned int nn) : mtl(mtl){
     positions.reserve(pos.size() * 3);
     for(const Face& f : pos) {
-      positions.push_back(f.x - 1);
-      positions.push_back(f.y - 1);
-      positions.push_back(f.z - 1);
+      positions.push_back(f.x - 1 - n);
+      positions.push_back(f.y - 1 - n);
+      positions.push_back(f.z - 1 - n);
     }
-    texPositions.reserve(pos.size() * 3);
-    for(const Face& f : pos) {
-      texPositions.push_back(f.x - 1);
-      texPositions.push_back(f.y - 1);
-      texPositions.push_back(f.z - 1);
+    texPositions.reserve(texPos.size() * 3);
+    for(const Face& f : texPos) {
+      texPositions.push_back(f.x - 1 - tn);
+      texPositions.push_back(f.y - 1 - tn);
+      texPositions.push_back(f.z - 1 - tn);
     }
-    normPositions.reserve(pos.size() * 3);
-    for(const Face& f : pos) {
-      normPositions.push_back(f.x - 1);
-      normPositions.push_back(f.y - 1);
-      normPositions.push_back(f.z - 1);
+    normPositions.reserve(normPos.size() * 3);
+    for(const Face& f : normPos) {
+      normPositions.push_back(f.x - 1 - nn);
+      normPositions.push_back(f.y - 1 - nn);
+      normPositions.push_back(f.z - 1 - nn);
     }
   }
 
 };
 
 struct Object{
+  std::vector<float> vertices;
+  std::vector<float> texCoords;
+  std::vector<float> normals;
+  
   std::string name;
   std::vector<Mesh> meshes;
+  Object(std::string name, std::vector<Vec3> Vertices, std::vector<Vec3> TexCoords, std::vector<Vec3> Normals, std::vector<Mesh> Meshes) : name(name), meshes(Meshes){
+    vertices.reserve(Vertices.size() * 3);
+    for(const Vec3 v : Vertices) {
+      vertices.push_back(v.x);
+      vertices.push_back(v.y);
+      vertices.push_back(v.z);
+    }
+    texCoords.reserve(TexCoords.size() * 3);
+    for(const Vec3 v : TexCoords) {
+      texCoords.push_back(v.x);
+      texCoords.push_back(v.y);
+      texCoords.push_back(v.z);
+    }
+    normals.reserve(Normals.size() * 3);
+    for(const Vec3 v : Normals) {
+      normals.push_back(v.x);
+      normals.push_back(v.y);
+      normals.push_back(v.z);
+    }
+  }
+};
+
+struct Material{
+  std::string name;
+  std::string DiffuseMap;
+  std::string AmbientMap;
+  std::string SpecularMap;
+  std::string BumpMap; //map paths
+  float ambient[3];
+  float diffuse[3];
+  float specular[3]; //colors
+  float sExponent; //shininess
+  float opacity;
+  Material(std::string name="") : name(name){
+    DiffuseMap="";
+    AmbientMap="";
+    SpecularMap="";
+    BumpMap="";
+    ambient[0] = 1.0; ambient[1] = 1.0; ambient[2] = 1.0;
+    diffuse[0] = 1.0; diffuse[1] = 1.0; diffuse[2] = 1.0;
+    specular[0] = 1.0; specular[1] = 1.0; specular[2] = 1.0;
+    sExponent = 1.0;
+    opacity = 1.0;
+  };
 };
 
 void parseString(std::vector<std::string>& tokens, const std::string& line, const std::string& delimiter){
@@ -102,7 +128,75 @@ void parseString(std::vector<std::string>& tokens, const std::string& line, cons
     tokens.push_back(line.substr(start));
 }
 
-bool loadModel(std::vector<Object>& Objects, std::string path){
+void loadMtl(std::string path, std::vector<Material>& Materials){
+  if(Materials.empty())Materials.push_back(Material("Default"));
+  std::ifstream mFile(path);
+  if(!mFile.is_open()) return;
+  
+  std::string line;
+  Material curMat;
+  
+  while(std::getline(mFile, line)){
+    std::istringstream iss(line);
+    std::vector<std::string> tokens;
+    std::string token;
+
+    while(iss >> token)
+      tokens.push_back(token);
+
+    if(tokens.empty() || tokens[0][0] == '#')
+      continue;
+
+    std::string op = tokens[0];
+    
+    if(op == "newmtl"){
+      if(curMat.name != ""){
+        Materials.push_back(curMat);
+      }
+      curMat = Material(tokens[1]);
+    }
+    //------------------
+    else if(op == "Ka"){
+      curMat.ambient[0] = std::stof(tokens[1]);   
+      curMat.ambient[1] = std::stof(tokens[2]);   
+      curMat.ambient[2] = std::stof(tokens[3]);   
+    }
+    //------------------
+    else if(op == "Kd"){
+      curMat.diffuse[0] = std::stof(tokens[1]);   
+      curMat.diffuse[1] = std::stof(tokens[2]);   
+      curMat.diffuse[2] = std::stof(tokens[3]);   
+    }
+    //------------------
+    else if(op == "Ks"){
+      curMat.specular[0] = std::stof(tokens[1]);   
+      curMat.specular[1] = std::stof(tokens[2]);   
+      curMat.specular[2] = std::stof(tokens[3]);   
+    }
+    //------------------
+    else if(op == "Ns")
+      curMat.sExponent = std::stof(tokens[1]);
+    //------------------
+    else if(op == "d" || op == "Tr")
+      curMat.opacity = std::stof(tokens[1]);
+    //------------------
+    else if(op == "map_Ka")
+      curMat.AmbientMap = tokens[1];
+    //------------------
+    else if(op == "map_Kd")
+      curMat.DiffuseMap= tokens[1];
+    //------------------
+    else if(op == "map_Ks")
+      curMat.SpecularMap = tokens[1];
+    //------------------
+    else if(op == "map_Bump" || op == "bump")
+      curMat.BumpMap = tokens[1];
+  }
+  if (curMat.name != "")
+    Materials.push_back(curMat);
+}
+
+bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, std::string path){
   if(path.substr(path.size()-4,4) != ".obj") return false;
 
   std::ifstream file(path);
@@ -122,13 +216,17 @@ bool loadModel(std::vector<Object>& Objects, std::string path){
   uint64_t li = 0;
   std::vector<Vec3> GeometryV;
   std::vector<Vec3> TextureV;
-  std::vector<Vec3> NormalV;
+  std::vector<Vec3> NormalV;  //define current obj
   std::vector<Face> Positions;
   std::vector<Face> TPositions;
-  std::vector<Face> NPositions; //all define current mesh
-  Object currentObj; //stores all meshes
+  std::vector<Face> NPositions; //define current mesh 
+
+  std::vector<Mesh> Meshes;
+  unsigned int n=0, tn=0, nn=0;
+
   bool firstObj = true;
-  std::string mtl;
+  std::string mtl = "";
+  std::string objName = "";
 
   while(std::getline(file, line)){
     std::istringstream iss(line);
@@ -214,53 +312,64 @@ bool loadModel(std::vector<Object>& Objects, std::string path){
     } //support only for triangular faces for now
     //------------------
     else if(op == "mtllib"){
-      //load new mtl file 
-
+      loadMtl(tokens[1], Materials);
     }
     //------------------
     else if(op == "usemtl"){
-      if(!Positions.empty()){
-        currentObj.meshes.push_back(Mesh(Positions, TPositions, NPositions, GeometryV, TextureV, NormalV, mtl)); 
+      if (!Positions.empty()){
+        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn)); 
+        n+=Positions.size()*3;
+        tn+=TPositions.size()*3;
+        nn+=NPositions.size()*3;
+        
         Positions.clear();
         TPositions.clear();
         NPositions.clear();
-        GeometryV.clear();
-        TextureV.clear();
-        NormalV.clear();
       }
       mtl = tokens[1];
     }
     //------------------
     else if(op == "o"){
       if(firstObj){
-        currentObj.name = token[1];
+        objName = token[1];
         firstObj=false;
       }
       else{
-        currentObj.meshes.push_back(Mesh(Positions, TPositions, NPositions, GeometryV, TextureV, NormalV, mtl));
-        Objects.push_back(currentObj);
-        currentObj = Object{};
+        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn));
+        Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
+        n+=Positions.size()*3;
+        tn+=TPositions.size()*3;
+        nn+=NPositions.size()*3;
+        
         Positions.clear();
         TPositions.clear();
         NPositions.clear();
         GeometryV.clear();
         TextureV.clear();
         NormalV.clear();
+        Meshes.clear();
+
+        objName = token[1];
       }
     }
     //------------------
     else if(op == "g"){
-      currentObj.meshes.push_back(Mesh(Positions, TPositions, NPositions, GeometryV, TextureV, NormalV, mtl)); //no distinction for groups for now
+      Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn)); //no distinction for groups for now
+      n+=Positions.size()*3;
+      tn+=TPositions.size()*3;
+      nn+=NPositions.size()*3;
+      
       Positions.clear();
       TPositions.clear();
       NPositions.clear();
-      GeometryV.clear();
-      TextureV.clear();
-      NormalV.clear();
     }
   }   
-
   
+  if(!Positions.empty()){
+    Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn)); 
+    Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
+  }
+
   return true;
 }
 
