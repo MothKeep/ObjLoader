@@ -16,7 +16,7 @@
 #define SCR_HEIGHT 1080
 #define PATH "ex.obj"
 
-Camera cam(glm::vec3(-60.0f, 0.0f, 0.0f));
+Camera cam(glm::vec3(-30.0f, 0.0f, 10.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -46,7 +46,7 @@ int main(){
   //std::vector<Renderer::Model> ObjModels;
   //for(int i=0; i<Objects.size(); i++) 
   //  ObjModels.push_back(Renderer::LoadObject(Objects[i]));
-  Renderer::Model Obj = Renderer::LoadObject(Objects[0]);
+  Renderer::Model Obj = Renderer::LoadObject(Objects[0], Materials);
 
   glUseProgram(shader.ID);
   GLint SetProj = glGetUniformLocation(shader.ID, "projection");
@@ -57,6 +57,9 @@ int main(){
   SetCol[1] = glGetUniformLocation(shader.ID, "material.diffuse");
   SetCol[2] = glGetUniformLocation(shader.ID, "material.specular");
   SetCol[3] = glGetUniformLocation(shader.ID, "material.shininess");
+        
+  GLint SetMap[1];
+  SetMap[0] = glGetUniformLocation(shader.ID, "material.diffuseM"); 
  
   GLint SetLight[4];
   SetLight[0] = glGetUniformLocation(shader.ID, "light.position");
@@ -96,7 +99,7 @@ int main(){
     //for(auto& objMod : ObjModels){
       //Renderer::RenderObject(objMod, shader, SetCol, Materials);
     //}
-    Renderer::RenderObject(Obj, shader, SetCol, Materials);
+    Renderer::RenderObject(Obj, shader, SetCol, SetMap, Materials);
 
     glfwSwapBuffers(window);
     glfwPollEvents();

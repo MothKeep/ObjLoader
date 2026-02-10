@@ -100,6 +100,7 @@ struct Material{
   float ambient[3];
   float diffuse[3];
   float specular[3]; //colors
+  float emission[3]; //emissed light
   float sExponent; //shininess
   float opacity;
   Material(std::string name="") : name(name){
@@ -129,7 +130,6 @@ void parseString(std::vector<std::string>& tokens, const std::string& line, cons
 }
 
 void loadMtl(std::string path, std::vector<Material>& Materials){
-  if(Materials.empty())Materials.push_back(Material("Default"));
   std::ifstream mFile(path);
   if(!mFile.is_open()) return;
   
@@ -174,6 +174,12 @@ void loadMtl(std::string path, std::vector<Material>& Materials){
       curMat.specular[2] = std::stof(tokens[3]);   
     }
     //------------------
+    else if(op == "Ke"){
+      curMat.emission[0] = std::stof(tokens[1]);   
+      curMat.emission[1] = std::stof(tokens[2]);   
+      curMat.emission[2] = std::stof(tokens[3]);
+    }
+    //------------------
     else if(op == "Ns")
       curMat.sExponent = std::stof(tokens[1]);
     //------------------
@@ -202,15 +208,8 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
   std::ifstream file(path);
   if(!file.is_open()) return false;
 
-  /*
-   * v - vertices
-   * vt - texCoords
-   * vn - normals
-   * vp - parameter space vertices
-   * f - polygonal face element
-   * l - line element
-   * mtl etc. - material
-  */
+  if(Materials.empty()) 
+    Materials.push_back(Material("Default"));
 
   std::string line;
   uint64_t li = 0;
