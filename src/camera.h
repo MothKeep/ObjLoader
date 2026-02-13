@@ -36,7 +36,7 @@ struct Camera{
   }
 
   void ProcessKeyboard(CamDir direction, float deltaTime){
-    float velocity = 2.5f * deltaTime;
+    float velocity = 7.5f * deltaTime;
     
     if (direction == FORWARD)
       Pos += Front * velocity;

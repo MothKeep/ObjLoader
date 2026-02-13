@@ -53,7 +53,7 @@ void main(){
   }
   //vertices + texture
   else if(state == 1){ 
-    vec3 ambient = ambientStrength * light.ambient * material.ambient; 
+    vec3 ambient = vec3(texture(material.diffuseM, TexCoords)) * ambientStrength * light.ambient * material.ambient; 
 
     result = ambient;
   }
@@ -69,14 +69,14 @@ void main(){
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
   
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess*8);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3 specular = light.specular * (spec*material.specular);
 
     result = ambient + diffuse + specular;
   }
   //all 
   else if(state == 3){ 
-    vec3 ambient = ambientStrength * light.ambient * material.ambient;
+    vec3 ambient = vec3(texture(material.diffuseM, TexCoords)) * ambientStrength * light.ambient * material.ambient;
 
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(light.position - FragPos);
@@ -85,7 +85,7 @@ void main(){
 
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess*8);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3 specular = light.specular * (spec*material.specular);
 
     result = ambient + diffuse + specular;

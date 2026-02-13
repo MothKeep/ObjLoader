@@ -65,7 +65,7 @@ int main(){
   SetLight[2]= glGetUniformLocation(shader.ID, "light.diffuse");
   SetLight[3]= glGetUniformLocation(shader.ID, "light.specular");
     
-  glUniform3f(glGetUniformLocation(shader.ID, "light.position"), 10.0f, 5.0f, 10.0f); 
+  glUniform3f(glGetUniformLocation(shader.ID, "light.position"), 0.0f, 20.0f, 10.0f); 
   glUniform3f(glGetUniformLocation(shader.ID, "light.ambient"), 0.2f, 0.2f, 0.2f); 
   glUniform3f(glGetUniformLocation(shader.ID, "light.diffuse"), 0.8f, 0.8f, 0.8f); 
   glUniform3f(glGetUniformLocation(shader.ID, "light.specular"), 1.0f, 1.0f, 1.0f); 
@@ -123,7 +123,7 @@ void init(GLFWwindow*& window){
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetCursorPosCallback(window, mouse_callback);
 
-  //stbi_set_flip_vertically_on_load(true);
+  stbi_set_flip_vertically_on_load(true);
   
   glEnable(GL_DEPTH_TEST);
 }
