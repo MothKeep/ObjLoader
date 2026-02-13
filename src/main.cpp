@@ -16,7 +16,7 @@
 #define SCR_HEIGHT 1080
 #define PATH "ex.obj"
 
-Camera cam(glm::vec3(-30.0f, 0.0f, 10.0f));
+Camera cam(glm::vec3(20.0f, 0.0f, 20.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -40,7 +40,6 @@ int main(){
     std::cout << "FAILED TO LOAD OBJ FILE\n";
   }
 
-
   Shader shader("src/vs.glsl", "src/fs.glsl");
 
   std::vector<Renderer::Model> ObjModels;
@@ -51,14 +50,14 @@ int main(){
   GLint SetProj = glGetUniformLocation(shader.ID, "projection");
   GLint SetView = glGetUniformLocation(shader.ID, "view");
   
-  GLint SetCol[4];
-  SetCol[0] = glGetUniformLocation(shader.ID, "material.ambient");
-  SetCol[1] = glGetUniformLocation(shader.ID, "material.diffuse");
-  SetCol[2] = glGetUniformLocation(shader.ID, "material.specular");
-  SetCol[3] = glGetUniformLocation(shader.ID, "material.shininess");
+  GLint SetMesh[6];
+  SetMesh[0] = glGetUniformLocation(shader.ID, "material.ambient");
+  SetMesh[1] = glGetUniformLocation(shader.ID, "material.diffuse");
+  SetMesh[2] = glGetUniformLocation(shader.ID, "material.specular");
+  SetMesh[3] = glGetUniformLocation(shader.ID, "material.shininess");
+  SetMesh[4] = glGetUniformLocation(shader.ID, "material.diffuseM"); 
+  SetMesh[5] = glGetUniformLocation(shader.ID, "state"); 
         
-  GLint SetMap[1];
-  SetMap[0] = glGetUniformLocation(shader.ID, "material.diffuseM"); 
  
   GLint SetLight[4];
   SetLight[0] = glGetUniformLocation(shader.ID, "light.position");
@@ -67,8 +66,8 @@ int main(){
   SetLight[3]= glGetUniformLocation(shader.ID, "light.specular");
     
   glUniform3f(glGetUniformLocation(shader.ID, "light.position"), 10.0f, 5.0f, 10.0f); 
-  glUniform3f(glGetUniformLocation(shader.ID, "light.ambient"), 0.3f, 0.3f, 0.3f); 
-  glUniform3f(glGetUniformLocation(shader.ID, "light.diffuse"), 0.5f, 0.5f, 0.5f); 
+  glUniform3f(glGetUniformLocation(shader.ID, "light.ambient"), 0.2f, 0.2f, 0.2f); 
+  glUniform3f(glGetUniformLocation(shader.ID, "light.diffuse"), 0.8f, 0.8f, 0.8f); 
   glUniform3f(glGetUniformLocation(shader.ID, "light.specular"), 1.0f, 1.0f, 1.0f); 
   
   GLint SetPos = glGetUniformLocation(shader.ID, "viewPos");
@@ -82,13 +81,13 @@ int main(){
     deltaTime = currentFrame - lastFrame;
     lastFrame = currentFrame;   processInput(window);
     
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.06f, 0.06f, 0.06f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     glUseProgram(shader.ID);
     glm::mat4 view = glm::mat4(1.0f); 
     glm::mat4 projection = glm::mat4(1.0f);
-    projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(50.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
     view = cam.GetViewMatrix();
     
     glUniform3fv(SetPos, 1, &cam.Pos[0]); 
@@ -96,10 +95,8 @@ int main(){
     glUniformMatrix4fv(SetView, 1, GL_FALSE, &view[0][0]);
 
     for(auto& objMod : ObjModels)
-      Renderer::RenderObject(objMod, shader, SetCol, SetMap, Materials);
+      Renderer::RenderObject(objMod, shader, SetMesh, Materials);
     
-    //Renderer::RenderObject(Obj, shader, SetCol, SetMap, Materials);
-
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
@@ -107,8 +104,6 @@ int main(){
   for(auto& objMod : ObjModels)
     Renderer::DestroyModel(objMod);
   
-  //Renderer::DestroyModel(Obj);
-
   terminate();
   return 0;
 }
@@ -128,6 +123,8 @@ void init(GLFWwindow*& window){
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetCursorPosCallback(window, mouse_callback);
 
+  //stbi_set_flip_vertically_on_load(true);
+  
   glEnable(GL_DEPTH_TEST);
 }
 

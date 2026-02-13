@@ -33,30 +33,37 @@ struct Face{
   Face(unsigned int x,unsigned int y,unsigned int z) : x(x), y(y), z(z){}
 };
 
+struct Index {
+  Face v;
+  Face vt;
+  Face vn;
+  Index(Face v, Face vt, Face vn) : v(v), vt(vt), vn(vn){}
+};
+
 struct Mesh{
   std::vector<unsigned int> positions;
   std::vector<unsigned int> texPositions;
   std::vector<unsigned int> normPositions;
   std::string mtl;
 
-  Mesh(std::vector<Face> pos, std::vector<Face> texPos, std::vector<Face> normPos, std::string mtl, unsigned int n,  unsigned int tn,  unsigned int nn) : mtl(mtl){
-    positions.reserve(pos.size() * 3);
-    for(const Face& f : pos) {
-      positions.push_back(f.x - 1 - n);
-      positions.push_back(f.y - 1 - n);
-      positions.push_back(f.z - 1 - n);
+  Mesh(std::vector<Index> pos, std::string mtl, unsigned int n, unsigned int tn, unsigned int nn) : mtl(mtl){
+    positions.reserve(pos.size()*3);
+    for(const Index x : pos){
+      positions.push_back(x.v.x - 1 - n);
+      positions.push_back(x.v.y - 1 - n);
+      positions.push_back(x.v.z - 1 - n);
     }
-    texPositions.reserve(texPos.size() * 3);
-    for(const Face& f : texPos) {
-      texPositions.push_back(f.x - 1 - tn);
-      texPositions.push_back(f.y - 1 - tn);
-      texPositions.push_back(f.z - 1 - tn);
+    texPositions.reserve(pos.size()*3);
+    for(const Index x : pos){
+      texPositions.push_back(x.vt.x - 1 - tn);
+      texPositions.push_back(x.vt.y - 1 - tn);
+      texPositions.push_back(x.vt.z - 1 - tn);
     }
-    normPositions.reserve(normPos.size() * 3);
-    for(const Face& f : normPos) {
-      normPositions.push_back(f.x - 1 - nn);
-      normPositions.push_back(f.y - 1 - nn);
-      normPositions.push_back(f.z - 1 - nn);
+    normPositions.reserve(pos.size()*3);
+    for(const Index x : pos){
+      normPositions.push_back(x.vn.x - 1 - nn);
+      normPositions.push_back(x.vn.y - 1 - nn);
+      normPositions.push_back(x.vn.z - 1 - nn);
     }
   }
 
@@ -104,7 +111,7 @@ struct Material{
   float sExponent; //shininess
   float opacity;
   Material(std::string name="") : name(name){
-    DiffuseMap="";
+    DiffuseMap="d.png";
     AmbientMap="";
     SpecularMap="";
     BumpMap="";
@@ -129,7 +136,7 @@ void parseString(std::vector<std::string>& tokens, const std::string& line, cons
     tokens.push_back(line.substr(start));
 }
 
-void parseFragments(std::vector<Face>& Pos, std::vector<Face>& TPos, std::vector<Face>& NPos, std::vector<std::string> tokens){
+void parseFragments(std::vector<Index>& Pos, std::vector<std::string> tokens){
   std::vector<int> v, vt, vn;
   for(int i=1; i<tokens.size(); i++){
     std::vector<std::string> parts;
@@ -137,15 +144,24 @@ void parseFragments(std::vector<Face>& Pos, std::vector<Face>& TPos, std::vector
     v.push_back(std::stoi(parts[0]));
     if(parts.size() > 1 && !parts[1].empty())
       vt.push_back(std::stoi(parts[1]));
+    else vt.push_back(0);
     if(parts.size() > 2 && !parts[2].empty())
       vn.push_back(std::stoi(parts[2]));
+    else vn.push_back(0);
     parts.clear();
   } 
 
   for(int i=0; i<v.size()-2; i++){
-    Pos.push_back(Face(v[0], v[i+1], v[i+2]));
-    if(!vt.empty()) TPos.push_back(Face(vt[0], vt[i+1], vt[i+2]));
-    if(!vn.empty()) NPos.push_back(Face(vn[0], vn[i+1], vn[i+2]));
+    Face g(v[0], v[i+1], v[i+2]);
+    Face t(0,0,0);
+    Face n(0,0,0);
+    if(!vt.empty()){
+      t.x = vt[0]; t.y=vt[i+1]; t.z = vt[i+2];
+    }
+    if(!vn.empty()){
+      n.x = vn[0]; n.y=vn[i+1]; n.z = vn[i+2];
+    }
+    Pos.push_back(Index(g,t,n));
   }
   v.clear(); vt.clear(); vn.clear();
 }
@@ -237,12 +253,9 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
   std::vector<Vec3> GeometryV;
   std::vector<Vec3> TextureV;
   std::vector<Vec3> NormalV;  //define current obj
-  std::vector<Face> Positions;
-  std::vector<Face> TPositions;
-  std::vector<Face> NPositions; //define current mesh 
-
+  std::vector<Index> Positions; 
   std::vector<Mesh> Meshes;
-  unsigned int vcount=0, vtcount=0, vncount=0;
+  unsigned int vcount = 0, vtcount = 0, vncount = 0;
 
   bool firstObj = true;
   std::string mtl = "";
@@ -295,7 +308,7 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
         std::cout<<"Error: Not enough arguments at line "<<li<<".\n";
         return false;
       }
-      parseFragments(Positions, TPositions, NPositions, tokens);
+      parseFragments(Positions, tokens);
     }
     //------------------
     else if(op == "mtllib"){
@@ -304,28 +317,24 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
     //------------------
     else if(op == "usemtl"){
       if (!Positions.empty()){
-        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
+        Meshes.push_back(Mesh(Positions, mtl, vcount, vtcount, vncount)); 
         
         Positions.clear();
-        TPositions.clear();
-        NPositions.clear();
       }
       mtl = tokens[1];
     }
     //------------------
     else if(op == "o"){
       if(firstObj){
-        objName = token[1];
+        objName = tokens[1];
         firstObj=false;
       }
       else{
-        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
+        Meshes.push_back(Mesh(Positions, mtl, vcount, vtcount, vncount)); 
         
         Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
       
         Positions.clear();
-        TPositions.clear();
-        NPositions.clear();
         vcount += GeometryV.size();
         vtcount += TextureV.size();
         vncount += NormalV.size();
@@ -334,21 +343,20 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
         NormalV.clear();
         Meshes.clear();
 
-        objName = token[1];
+        objName = tokens[1];
       }
     }
     //------------------
     else if(op == "g"){
-      Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
+      Meshes.push_back(Mesh(Positions, mtl, vcount, vtcount, vncount)); 
         
       Positions.clear();
-      TPositions.clear();
-      NPositions.clear();
     }
+    li++;
   }   
   
   if(!Positions.empty()){
-    Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
+    Meshes.push_back(Mesh(Positions, mtl, vcount, vtcount, vncount)); 
     Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
   }
 
