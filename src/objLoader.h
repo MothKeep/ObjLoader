@@ -129,6 +129,27 @@ void parseString(std::vector<std::string>& tokens, const std::string& line, cons
     tokens.push_back(line.substr(start));
 }
 
+void parseFragments(std::vector<Face>& Pos, std::vector<Face>& TPos, std::vector<Face>& NPos, std::vector<std::string> tokens){
+  std::vector<int> v, vt, vn;
+  for(int i=1; i<tokens.size(); i++){
+    std::vector<std::string> parts;
+    parseString(parts, tokens[i], "/");
+    v.push_back(std::stoi(parts[0]));
+    if(parts.size() > 1 && !parts[1].empty())
+      vt.push_back(std::stoi(parts[1]));
+    if(parts.size() > 2 && !parts[2].empty())
+      vn.push_back(std::stoi(parts[2]));
+    parts.clear();
+  } 
+
+  for(int i=0; i<v.size()-2; i++){
+    Pos.push_back(Face(v[0], v[i+1], v[i+2]));
+    if(!vt.empty()) TPos.push_back(Face(vt[0], vt[i+1], vt[i+2]));
+    if(!vn.empty()) NPos.push_back(Face(vn[0], vn[i+1], vn[i+2]));
+  }
+  v.clear(); vt.clear(); vn.clear();
+}
+
 void loadMtl(std::string path, std::vector<Material>& Materials){
   std::ifstream mFile(path);
   if(!mFile.is_open()) return;
@@ -221,7 +242,7 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
   std::vector<Face> NPositions; //define current mesh 
 
   std::vector<Mesh> Meshes;
-  unsigned int n=0, tn=0, nn=0;
+  unsigned int vcount=0, vtcount=0, vncount=0;
 
   bool firstObj = true;
   std::string mtl = "";
@@ -245,8 +266,7 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
         std::cout<<"not enough arguments at line "<<li<<".\n";
         return false;
       }
-      else
-        GeometryV.push_back(Vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]))); //no support for w component
+      GeometryV.push_back(Vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]))); //no support for w component
     }
     //------------------
     else if(op == "vt"){
@@ -275,40 +295,8 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
         std::cout<<"Error: Not enough arguments at line "<<li<<".\n";
         return false;
       }
-
-      unsigned int v[3]; 
-      unsigned int vt[3]; 
-      unsigned int vn[3]; 
-      bool ve=false, vte=false, vne=false;
-
-      for(int i=1;i<4;i++){
-        std::vector<std::string> parts;
-        parseString(parts, tokens[i], "/");
-
-        v[i-1] = std::stoi(parts[0]);
-        
-        if (parts.size() >= 1 && !parts[0].empty()){
-          v[i-1] = std::stoi(parts[0]);
-          ve = true;
-        }
-
-        if (parts.size() >= 2 && !parts[1].empty()){
-          vt[i-1] = std::stoi(parts[1]);
-          vte=true;
-        }
-
-        if (parts.size() >= 3 && !parts[2].empty()){
-          vn[i-1] = std::stoi(parts[2]);
-          vne=true;
-        }
-      }
-      if(ve)
-        Positions.push_back(Face(v[0],v[1],v[2]));
-      if(vte)
-        TPositions.push_back(Face(vt[0],vt[1],vt[2]));
-      if(vne)
-        NPositions.push_back(Face(vn[0],vn[1],vn[2]));
-    } //support only for triangular faces for now
+      parseFragments(Positions, TPositions, NPositions, tokens);
+    }
     //------------------
     else if(op == "mtllib"){
       loadMtl(tokens[1], Materials);
@@ -316,10 +304,7 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
     //------------------
     else if(op == "usemtl"){
       if (!Positions.empty()){
-        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn)); 
-        n+=Positions.size()*3;
-        tn+=TPositions.size()*3;
-        nn+=NPositions.size()*3;
+        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
         
         Positions.clear();
         TPositions.clear();
@@ -334,15 +319,16 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
         firstObj=false;
       }
       else{
-        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn));
-        Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
-        n+=Positions.size()*3;
-        tn+=TPositions.size()*3;
-        nn+=NPositions.size()*3;
+        Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
         
+        Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
+      
         Positions.clear();
         TPositions.clear();
         NPositions.clear();
+        vcount += GeometryV.size();
+        vtcount += TextureV.size();
+        vncount += NormalV.size();
         GeometryV.clear();
         TextureV.clear();
         NormalV.clear();
@@ -353,11 +339,8 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
     }
     //------------------
     else if(op == "g"){
-      Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn)); //no distinction for groups for now
-      n+=Positions.size()*3;
-      tn+=TPositions.size()*3;
-      nn+=NPositions.size()*3;
-      
+      Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
+        
       Positions.clear();
       TPositions.clear();
       NPositions.clear();
@@ -365,7 +348,7 @@ bool loadObject(std::vector<Object>& Objects, std::vector<Material>& Materials, 
   }   
   
   if(!Positions.empty()){
-    Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, n, tn, nn)); 
+    Meshes.push_back(Mesh(Positions, TPositions, NPositions, mtl, vcount, vtcount, vncount)); 
     Objects.push_back(Object(objName, GeometryV, TextureV, NormalV, Meshes));
   }
 

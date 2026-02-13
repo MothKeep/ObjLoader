@@ -17,6 +17,7 @@ struct Mesh{
   GLsizei indexCount;
   std::string material;
   unsigned int textureID;
+  unsigned int state;  // 0 - just vertices;  1 - vertices and normals  2 - vertices and textures  3 - all
 };
 
 struct Model{
@@ -62,71 +63,149 @@ Model LoadObject(objLoader::Object Object, std::vector<objLoader::Material> Mate
   Model model;
   for(const objLoader::Mesh& mesh : Object.meshes) {
     Mesh gpuMesh;
-    std::vector<float> interleaved;
-    interleaved.reserve(mesh.positions.size() * 8);
+    gpuMesh.state = 0;
+    if(mesh.normPositions.size() > 0) gpuMesh.state+=1; 
+    if(mesh.texPositions.size() > 0) gpuMesh.state+=2; 
 
-    for (size_t i = 0; i < mesh.positions.size(); i++) {
-      unsigned int v = mesh.positions[i];
-      unsigned int n = (i < mesh.normPositions.size()) ? mesh.normPositions[i] : 0;
-      unsigned int t = (i < mesh.texPositions.size()) ? mesh.texPositions[i] : 0;
-      
-      interleaved.push_back(Object.vertices[v * 3 + 0]);
-      interleaved.push_back(Object.vertices[v * 3 + 1]);
-      interleaved.push_back(Object.vertices[v * 3 + 2]);
-
-      if (!Object.normals.empty()) {
-        interleaved.push_back(Object.normals[n * 3 + 0]);
-        interleaved.push_back(Object.normals[n * 3 + 1]);
-        interleaved.push_back(Object.normals[n * 3 + 2]);
-      } else {
-        interleaved.push_back(0.0f);
-        interleaved.push_back(1.0f);
-        interleaved.push_back(0.0f);
-      }
-      if (!Object.texCoords.empty()) {
-        interleaved.push_back(Object.texCoords[t * 2 + 0]);
-        interleaved.push_back(Object.texCoords[t * 2 + 1]);
-      } else {
-        interleaved.push_back(0.0f);
-        interleaved.push_back(1.0f);
-      }
-    }
-    
     glGenVertexArrays(1, &gpuMesh.VAO);
     glGenBuffers(1, &gpuMesh.VBO);
 
     glBindVertexArray(gpuMesh.VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.VBO);
-    glBufferData(GL_ARRAY_BUFFER, interleaved.size() * sizeof(float), interleaved.data(), GL_STATIC_DRAW);
+    if(gpuMesh.state==0){
+      glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.VBO);
+      glBufferData(GL_ARRAY_BUFFER, mesh.positions.size() * sizeof(float), mesh.positions.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+      glEnableVertexAttribArray(0);
+    }
+    else if(gpuMesh.state==1){
+      std::vector<float> interleaved;
+      interleaved.reserve(mesh.positions.size() * 6);
+
+      for (size_t i = 0; i < mesh.positions.size(); i++){
+        unsigned int v = mesh.positions[i];
+        unsigned int n = (i < mesh.normPositions.size()) ? mesh.normPositions[i] : 0;
+      
+        interleaved.push_back(Object.vertices[v * 3 + 0]);
+        interleaved.push_back(Object.vertices[v * 3 + 1]);
+        interleaved.push_back(Object.vertices[v * 3 + 2]);
+
+        if (!Object.normals.empty()) {
+          interleaved.push_back(Object.normals[n * 3 + 0]);
+          interleaved.push_back(Object.normals[n * 3 + 1]);
+          interleaved.push_back(Object.normals[n * 3 + 2]);
+        } else {
+          interleaved.push_back(0.0f);
+          interleaved.push_back(1.0f);
+          interleaved.push_back(0.0f);
+        }
+      }
+        
+      glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.VBO);
+      glBufferData(GL_ARRAY_BUFFER, interleaved.size() * sizeof(float), interleaved.data(), GL_STATIC_DRAW);
+
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+      glEnableVertexAttribArray(0);
     
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+      glEnableVertexAttribArray(1);
+    }
+
+    else if(gpuMesh.state==2){
+      std::vector<float> interleaved;
+      interleaved.reserve(mesh.positions.size() * 5);
+
+      for (size_t i = 0; i < mesh.positions.size(); i++){
+        unsigned int v = mesh.positions[i];
+        unsigned int t = (i < mesh.texPositions.size()) ? mesh.texPositions[i] : 0;
+      
+        interleaved.push_back(Object.vertices[v * 3 + 0]);
+        interleaved.push_back(Object.vertices[v * 3 + 1]);
+        interleaved.push_back(Object.vertices[v * 3 + 2]);
+
+        if (!Object.texCoords.empty()) {
+          interleaved.push_back(Object.texCoords[t * 2 + 0]);
+          interleaved.push_back(Object.texCoords[t * 2 + 1]);
+        } else {
+          interleaved.push_back(0.0f);
+          interleaved.push_back(1.0f);
+        }
+      }
+        
+      glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.VBO);
+      glBufferData(GL_ARRAY_BUFFER, interleaved.size() * sizeof(float), interleaved.data(), GL_STATIC_DRAW);
+
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+      glEnableVertexAttribArray(0);
     
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6*sizeof(float)));
-    glEnableVertexAttribArray(2);
+      glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+      glEnableVertexAttribArray(2);
+    }
+    else if(gpuMesh.state==3){
+      std::vector<float> interleaved;
+      interleaved.reserve(mesh.positions.size() * 8);
+
+      for (size_t i = 0; i < mesh.positions.size(); i++){
+        unsigned int v = mesh.positions[i];
+        unsigned int n = (i < mesh.normPositions.size()) ? mesh.normPositions[i] : 0;
+        unsigned int t = (i < mesh.texPositions.size()) ? mesh.texPositions[i] : 0;
+      
+        interleaved.push_back(Object.vertices[v * 3 + 0]);
+        interleaved.push_back(Object.vertices[v * 3 + 1]);
+        interleaved.push_back(Object.vertices[v * 3 + 2]);
+
+        if (!Object.normals.empty()) {
+          interleaved.push_back(Object.normals[n * 3 + 0]);
+          interleaved.push_back(Object.normals[n * 3 + 1]);
+          interleaved.push_back(Object.normals[n * 3 + 2]);
+        } else {
+          interleaved.push_back(0.0f);
+          interleaved.push_back(1.0f);
+          interleaved.push_back(0.0f);
+        }
+        if (!Object.texCoords.empty()) {
+          interleaved.push_back(Object.texCoords[t * 2 + 0]);
+          interleaved.push_back(Object.texCoords[t * 2 + 1]);
+        } else {
+          interleaved.push_back(0.0f);
+          interleaved.push_back(1.0f);
+        }
+      }
+        
+      glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.VBO);
+      glBufferData(GL_ARRAY_BUFFER, interleaved.size() * sizeof(float), interleaved.data(), GL_STATIC_DRAW);
+
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+      glEnableVertexAttribArray(0);
+    
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3*sizeof(float)));
+      glEnableVertexAttribArray(1);
+    
+      glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6*sizeof(float)));
+      glEnableVertexAttribArray(2);
+    }
 
     gpuMesh.indexCount = static_cast<GLsizei>(mesh.positions.size());
     gpuMesh.material = mesh.mtl;
 
-    objLoader::Material mtl = Materials[0]; 
+    if(gpuMesh.state == 2 || gpuMesh.state == 3){
+      objLoader::Material mtl = Materials[0]; 
 
-    for(const objLoader::Material& mat : Materials){
-      if(gpuMesh.material == mat.name){
-        mtl=mat;
-        break;
-      } 
+      for(const objLoader::Material& mat : Materials){
+        if(gpuMesh.material == mat.name){
+          mtl=mat;
+          break;
+        } 
+      }
+      if(mtl.DiffuseMap != ""){
+        int pos = 0;
+        while ((pos = mtl.DiffuseMap.find("\\\\", pos)) != std::string::npos)
+          mtl.DiffuseMap.replace(pos, 2, "/");
+        gpuMesh.textureID = loadTexture(mtl.DiffuseMap);
+      }
     }
-    
-    if(mtl.DiffuseMap != ""){
-      int pos = 0;
-      while ((pos = mtl.DiffuseMap.find("\\\\", pos)) != std::string::npos)
-        mtl.DiffuseMap.replace(pos, 2, "/");
-      gpuMesh.textureID = loadTexture(mtl.DiffuseMap);
-    }
+
     model.meshes.push_back(gpuMesh);
 
     glBindVertexArray(0);
@@ -146,6 +225,7 @@ void RenderObject(Model& model, Shader& shader, GLint* SetCol, GLint* SetMap, st
         break;
       } 
     }
+  // 0 - just vertices;  1 - vertices and normals  2 - vertices and textures  3 - all
 
     glUniform3f(SetCol[0], mtl.ambient[0], mtl.ambient[1], mtl.ambient[2] );
     glUniform3f(SetCol[1], mtl.diffuse[0], mtl.diffuse[1], mtl.diffuse[2] );

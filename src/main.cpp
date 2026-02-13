@@ -43,10 +43,9 @@ int main(){
 
   Shader shader("src/vs.glsl", "src/fs.glsl");
 
-  //std::vector<Renderer::Model> ObjModels;
-  //for(int i=0; i<Objects.size(); i++) 
-  //  ObjModels.push_back(Renderer::LoadObject(Objects[i]));
-  Renderer::Model Obj = Renderer::LoadObject(Objects[0], Materials);
+  std::vector<Renderer::Model> ObjModels;
+  for(int i=0; i<Objects.size(); i++) 
+    ObjModels.push_back(Renderer::LoadObject(Objects[i], Materials));
 
   glUseProgram(shader.ID);
   GLint SetProj = glGetUniformLocation(shader.ID, "projection");
@@ -96,19 +95,19 @@ int main(){
     glUniformMatrix4fv(SetProj, 1, GL_FALSE, &projection[0][0]);
     glUniformMatrix4fv(SetView, 1, GL_FALSE, &view[0][0]);
 
-    //for(auto& objMod : ObjModels){
-      //Renderer::RenderObject(objMod, shader, SetCol, Materials);
-    //}
-    Renderer::RenderObject(Obj, shader, SetCol, SetMap, Materials);
+    for(auto& objMod : ObjModels)
+      Renderer::RenderObject(objMod, shader, SetCol, SetMap, Materials);
+    
+    //Renderer::RenderObject(Obj, shader, SetCol, SetMap, Materials);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  //for(auto& objMod : ObjModels){
-   // Renderer::DestroyModel(objMod);
-  //}
-  Renderer::DestroyModel(Obj);
+  for(auto& objMod : ObjModels)
+    Renderer::DestroyModel(objMod);
+  
+  //Renderer::DestroyModel(Obj);
 
   terminate();
   return 0;
