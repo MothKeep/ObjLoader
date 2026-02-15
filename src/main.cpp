@@ -1,6 +1,8 @@
 #include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
+#include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <vector>
 #include "Renderer.h"
@@ -14,7 +16,6 @@
 
 #define SCR_WIDTH 1920
 #define SCR_HEIGHT 1080
-#define PATH "ex.obj"
 
 Camera cam(glm::vec3(20.0f, 0.0f, 20.0f));
 float lastX = SCR_WIDTH / 2.0f;
@@ -24,19 +25,34 @@ bool firstMouse = true;
 float deltaTime = 0.0f;	
 float lastFrame = 0.0f;
 
-void init(GLFWwindow*& window);
+void init(GLFWwindow*& window, bool flip);
 void terminate();
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 
-int main(){
+int main(int32_t _argc, char** _argv){
+  if (_argc < 2) {
+    std::cout<<"Missing file path\nDo: ./objLoader <filepath> (optional texture flip)[0|1]\n";
+		return EXIT_FAILURE;
+	}
+	if (!std::filesystem::exists(_argv[1])) {
+    std::cout<<"Couldn't find requested file. Closing\n";
+		return EXIT_FAILURE;
+	}
+  std::string path = _argv[1];
+  
+  bool flip = true;
+  if(std::strcmp(_argv[2], "0") == 0) {
+    flip = false;
+  }
+
   GLFWwindow* window;
-  init(window);
+  init(window, flip);
 
 
   std::vector<objLoader::Object> Objects;
   std::vector<objLoader::Material> Materials;
-  if (!objLoader::loadObject(Objects, Materials, PATH) ) {
+  if (!objLoader::loadObject(Objects, Materials, path) ) {
     std::cout << "FAILED TO LOAD OBJ FILE\n";
   }
 
@@ -109,7 +125,7 @@ int main(){
 }
 //Main end
 
-void init(GLFWwindow*& window){
+void init(GLFWwindow*& window, bool flip){
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -123,7 +139,7 @@ void init(GLFWwindow*& window){
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetCursorPosCallback(window, mouse_callback);
 
-  stbi_set_flip_vertically_on_load(true);
+  stbi_set_flip_vertically_on_load(flip);
   
   glEnable(GL_DEPTH_TEST);
 }
