@@ -42,7 +42,7 @@ int main(int32_t _argc, char** _argv){
   std::string path = _argv[1];
   
   bool flip = true;
-  if(std::strcmp(_argv[2], "0") == 0) {
+  if(_argc >2 && std::strcmp(_argv[2], "0") == 0) {
     flip = false;
   }
 

@@ -43,7 +43,7 @@ uniform vec3 viewPos;
 
 void main(){
   vec3 result = vec3(0.0);
-  float ambientStrength=0.2;
+  float ambientStrength=0.3;
 
   //pure vertices
   if(state == 0){ 
