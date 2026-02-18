@@ -16,18 +16,23 @@ To load and render an object:
 2. From the project directory, run:
 
 ```bash
-./objLoader <filename> [0|1]*
+./objLoader <filename> <texture flip (0|1)>* <number of lights>*
 ```
 ### Arguments
 
 - `<filename>`  
   Path to the `.obj` file you want to load.
 
-- `[0|1]` *(optional)*  
+- `<texture flip>` *(optional)*  
   Controls texture flipping:
   - `0` → do not flip textures  
   - `1` → flip textures  
   - Defaults to `1` if omitted.
+
+- `<number of lights>` *(optional)*  
+  Controls number of lights:
+  *note - maximum of 50, with rise of number, strength of each individual one is weakened.*
+  - Defaults to `3` if omitted.
 
 
 ## Dependencies

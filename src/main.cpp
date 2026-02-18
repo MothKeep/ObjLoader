@@ -1,9 +1,11 @@
 #include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
+#include <complex>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
+#include <string>
 #include <vector>
 #include "Renderer.h"
 #include "glm/detail/qualifier.hpp"
@@ -32,7 +34,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 
 int main(int32_t _argc, char** _argv){
   if (_argc < 2) {
-    std::cout<<"Missing file path\nDo: ./objLoader <filepath> (optional texture flip)[0|1]\n";
+    std::cout<<"Missing file path\nDo: ./objLoader <filepath> <texture flip (0|1)*> <number of lights*>\n";
 		return EXIT_FAILURE;
 	}
 	if (!std::filesystem::exists(_argv[1])) {
@@ -42,10 +44,14 @@ int main(int32_t _argc, char** _argv){
   std::string path = _argv[1];
   
   bool flip = true;
-  if(_argc >2 && std::strcmp(_argv[2], "0") == 0) {
+  if(_argc > 2 && std::strcmp(_argv[2], "0") == 0) {
     flip = false;
   }
 
+  int lights = 3;
+  if(_argc > 3) lights=std::stoi(_argv[3]);
+
+  lights = (lights > 50) ? 50 : lights; 
   GLFWwindow* window;
   init(window, flip);
 
@@ -74,18 +80,31 @@ int main(int32_t _argc, char** _argv){
   SetMesh[4] = glGetUniformLocation(shader.ID, "material.diffuseM"); 
   SetMesh[5] = glGetUniformLocation(shader.ID, "state"); 
         
- 
-  GLint SetLight[4];
+/* 
   SetLight[0] = glGetUniformLocation(shader.ID, "light.position");
   SetLight[1] = glGetUniformLocation(shader.ID, "light.ambient");
   SetLight[2]= glGetUniformLocation(shader.ID, "light.diffuse");
   SetLight[3]= glGetUniformLocation(shader.ID, "light.specular");
-    
-  glUniform3f(glGetUniformLocation(shader.ID, "light.position"), 0.0f, 20.0f, 10.0f); 
+  SetLight[4]= glGetUniformLocation(shader.ID, "Nr_Lights");
+  */  
   glUniform3f(glGetUniformLocation(shader.ID, "light.ambient"), 0.2f, 0.2f, 0.2f); 
   glUniform3f(glGetUniformLocation(shader.ID, "light.diffuse"), 0.8f, 0.8f, 0.8f); 
   glUniform3f(glGetUniformLocation(shader.ID, "light.specular"), 1.0f, 1.0f, 1.0f); 
   
+  glUniform1i(glGetUniformLocation(shader.ID, "Nr_Lights"), lights); 
+  float offset = 17.0f;
+  float radius = 24.0f;
+  for (unsigned int i = 0; i < lights; i++){
+    float angle = (float)i / (float)lights * 360.0f;
+    float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+    float x = sin(angle) * radius + displacement;
+    displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+    float y = displacement * 0.4f + 20.0f;  
+    displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+    float z = cos(angle) * radius + displacement;
+    std::string name = "Lights[" + std::to_string(i) + "].position";
+    glUniform3f(glGetUniformLocation(shader.ID, name.c_str()), x, y, z); 
+  }
   GLint SetPos = glGetUniformLocation(shader.ID, "viewPos");
 
   glm::mat4 model = glm::mat4(1.0f); 
